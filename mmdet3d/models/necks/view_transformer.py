@@ -658,8 +658,7 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
         return self.loss_depth_weight * depth_loss
 
     def forward(self, input):
-        (x, rots, trans, intrins, post_rots, post_trans, bda,
-         mlp_input) = input[:8]
+        (x, rots, trans, intrins, post_rots, post_trans, bda, mlp_input) = input[:8]
 
         B, N, C, H, W = x.shape
         x = x.view(B * N, C, H, W)

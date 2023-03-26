@@ -1,6 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 from .base import Base3DDetector
-from .bevdet import BEVDepth4D, BEVDet, BEVDet4D, BEVDetTRT
+from .bevdet import BEVDet, BEVDetTRT
+from .bevdet4d import BEVDet4D, BEVDepth4D
 from .centerpoint import CenterPoint
 from .dynamic_voxelnet import DynamicVoxelNet
 from .fcos_mono3d import FCOSMono3D

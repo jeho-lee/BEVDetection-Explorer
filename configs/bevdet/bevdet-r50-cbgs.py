@@ -140,7 +140,7 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = 'data/nuscenes/'
+data_root = '/data/home/jeholee/omni3D/data/nuscenes/' # TODO
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(

@@ -173,8 +173,8 @@ class BEVDet4D(BEVDet):
                          **kwargs):
         if sequential:
             return self.extract_img_feat_sequential(img, kwargs['feat_prev'])
-        imgs, rots, trans, intrins, post_rots, post_trans, bda = \
-            self.prepare_inputs(img)
+        imgs, rots, trans, intrins, post_rots, post_trans, bda = self.prepare_inputs(img)
+        
         """Extract features of images."""
         bev_feat_list = []
         depth_list = []
@@ -184,10 +184,10 @@ class BEVDet4D(BEVDet):
             if key_frame or self.with_prev:
                 if self.align_after_view_transfromation:
                     rot, tran = rots[0], trans[0]
-                mlp_input = self.img_view_transformer.get_mlp_input(
-                    rots[0], trans[0], intrin, post_rot, post_tran, bda)
-                inputs_curr = (img, rot, tran, intrin, post_rot,
-                               post_tran, bda, mlp_input)
+
+                mlp_input = self.img_view_transformer.get_mlp_input(rots[0], trans[0], intrin, post_rot, post_tran, bda)
+                inputs_curr = (img, rot, tran, intrin, post_rot,post_tran, bda, mlp_input)
+                
                 if key_frame:
                     bev_feat, depth = self.prepare_bev_feat(*inputs_curr)
                 else:
