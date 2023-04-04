@@ -123,8 +123,7 @@ class LSSViewTransformer(BaseModule):
         # post-transformation
         # B x N x D x H x W x 3
         points = self.frustum.to(rots) - post_trans.view(B, N, 1, 1, 1, 3)
-        points = torch.inverse(post_rots).view(B, N, 1, 1, 1, 3, 3)\
-            .matmul(points.unsqueeze(-1))
+        points = torch.inverse(post_rots).view(B, N, 1, 1, 1, 3, 3).matmul(points.unsqueeze(-1))
 
         # cam_to_ego
         points = torch.cat(
@@ -513,7 +512,9 @@ class DepthNet(nn.Module):
         depth = self.depth_conv(depth)
         return torch.cat([depth, context], dim=1)
 
-
+"""
+왜 DepthAggregation 안 쓰고 있는지? (TODO)
+"""
 class DepthAggregation(nn.Module):
     """pixel cloud feature extraction."""
 
@@ -603,10 +604,9 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
             bda[:, :, 1, 0],
             bda[:, :, 1, 1],
             bda[:, :, 2, 2],
-        ],
-                                dim=-1)
-        sensor2ego = torch.cat([rot, tran.reshape(B, N, 3, 1)],
-                               dim=-1).reshape(B, N, -1)
+        ], dim=-1)
+        
+        sensor2ego = torch.cat([rot, tran.reshape(B, N, 3, 1)], dim=-1).reshape(B, N, -1)
         mlp_input = torch.cat([mlp_input, sensor2ego], dim=-1)
         return mlp_input
 
@@ -662,7 +662,8 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
 
         B, N, C, H, W = x.shape
         x = x.view(B * N, C, H, W)
-        x = self.depth_net(x, mlp_input)
+        x = self.depth_net(x, mlp_input) # Get depth feature
+        
         depth_digit = x[:, :self.D, ...]
         tran_feat = x[:, self.D:self.D + self.out_channels, ...]
         depth = depth_digit.softmax(dim=1)

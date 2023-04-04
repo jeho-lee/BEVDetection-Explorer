@@ -202,7 +202,10 @@ def main():
     # set random seeds
     if args.seed is not None:
         set_random_seed(args.seed, deterministic=args.deterministic)
-
+    
+    cfg.data.test.data_root = '/data/home/jeholee/omni3D/data/nuscenes/'
+    print(cfg.data.test)
+    
     # build the dataloader
     dataset = build_dataset(cfg.data.test)
     data_loader = build_dataloader(dataset, **test_loader_cfg)

@@ -38,7 +38,7 @@ grid_config = {
 
 voxel_size = [0.1, 0.1, 0.2]
 
-numC_Trans = 80
+numC_Trans = 80 # BEV channels
 
 model = dict(
     type='BEVDepth',
@@ -66,7 +66,10 @@ model = dict(
         input_size=data_config['input_size'],
         in_channels=512,
         out_channels=numC_Trans,
-        depthnet_cfg=dict(use_dcn=False), # Whether to use deformable convolution (TODO check)
+        
+        # Whether to use deformable convolution (TODO check)
+        # In BEVDepth, the default setting is to use dcn
+        depthnet_cfg=dict(use_dcn=False, use_aspp=True),
         downsample=16),
     img_bev_encoder_backbone=dict(
         type='CustomResNet',
@@ -221,8 +224,9 @@ test_data_config = dict(
     data_root=data_root,
     ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
 
+# Training Config (2023-3-31 by Jeho Lee)
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=8, # If use 8 GPUs, total batch size is 8*8=64
     workers_per_gpu=4,
     train=dict(
         type='CBGSDataset',
@@ -252,7 +256,7 @@ lr_config = dict(
     warmup_iters=200,
     warmup_ratio=0.001,
     step=[20,])
-runner = dict(type='EpochBasedRunner', max_epochs=20)
+runner = dict(type='EpochBasedRunner', max_epochs=24) # 24 epochs
 
 custom_hooks = [
     dict(
@@ -262,4 +266,46 @@ custom_hooks = [
     ),
 ]
 
-# fp16 = dict(loss_scale='dynamic')
+# Training Config (Original)
+# data = dict(
+#     samples_per_gpu=8,
+#     workers_per_gpu=4,
+#     train=dict(
+#         type='CBGSDataset',
+#         dataset=dict(
+#         data_root=data_root,
+#         ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
+#         pipeline=train_pipeline,
+#         classes=class_names,
+#         test_mode=False,
+#         use_valid_flag=True,
+#         # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
+#         # and box_type_3d='Depth' in sunrgbd and scannet dataset.
+#         box_type_3d='LiDAR')),
+#     val=test_data_config,
+#     test=test_data_config)
+
+# for key in ['val', 'test']:
+#     data[key].update(share_data_config)
+# data['train']['dataset'].update(share_data_config)
+
+# # Optimizer
+# optimizer = dict(type='AdamW', lr=2e-4, weight_decay=1e-2)
+# optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
+# lr_config = dict(
+#     policy='step',
+#     warmup='linear',
+#     warmup_iters=200,
+#     warmup_ratio=0.001,
+#     step=[20,])
+# runner = dict(type='EpochBasedRunner', max_epochs=20)
+
+# custom_hooks = [
+#     dict(
+#         type='MEGVIIEMAHook',
+#         init_updates=10560,
+#         priority='NORMAL',
+#     ),
+# ]
+
+# # fp16 = dict(loss_scale='dynamic')

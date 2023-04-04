@@ -179,8 +179,7 @@ class BEVDet4D(BEVDet):
         bev_feat_list = []
         depth_list = []
         key_frame = True  # back propagation for key frame only
-        for img, rot, tran, intrin, post_rot, post_tran in zip(
-                imgs, rots, trans, intrins, post_rots, post_trans):
+        for img, rot, tran, intrin, post_rot, post_tran in zip(imgs, rots, trans, intrins, post_rots, post_trans):
             if key_frame or self.with_prev:
                 if self.align_after_view_transfromation:
                     rot, tran = rots[0], trans[0]

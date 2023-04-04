@@ -225,7 +225,21 @@ class BEVDetTRT(BEVDet):
 
 @DETECTORS.register_module()
 class BEVDepth(BEVDet):
-
+    
+    def extract_img_feat(self, img, img_metas, **kwargs):
+        """Extract features of images."""
+        imgs, rots, trans, intrins, post_rots, post_trans, bda = img
+        
+        # Prepare mlp input
+        # mlp_input = self.img_view_transformer.get_mlp_input(rots[0], trans[0], intrins, post_rots, post_trans, bda)
+        mlp_input = self.img_view_transformer.get_mlp_input(rots, trans, intrins, post_rots, post_trans, bda)
+        
+        # Extract BEV feature
+        x = self.image_encoder(imgs)
+        bev_feat, depth = self.img_view_transformer([x, rots, trans, intrins, post_rots, post_trans, bda, mlp_input])
+        bev_feat = self.bev_encoder(bev_feat)
+        return [bev_feat], depth
+    
     def forward_train(self,
                       points=None,
                       img_metas=None,
