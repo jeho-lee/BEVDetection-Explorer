@@ -39,6 +39,7 @@ def parse_args():
     parser.add_argument('config', help='test config file path')
     parser.add_argument('checkpoint', help='checkpoint file')
     parser.add_argument('dataroot', help='data root of nuScenes')
+    parser.add_argument('inforoot', help='info pkl file root of nuScenes')
     parser.add_argument('--out', help='output result file in pickle format')
     parser.add_argument(
         '--fuse-conv-bn',
@@ -134,8 +135,6 @@ def parse_args():
 def main():
     args = parse_args()
 
-    assert args.dataroot("Please specify dataroot")
-
     assert args.out or args.eval or args.format_only or args.show \
         or args.show_dir, \
         ('Please specify at least one operation (save/eval/format/show the '
@@ -153,7 +152,12 @@ def main():
         cfg.merge_from_dict(args.cfg_options)
 
     cfg = compat_cfg(cfg)
-
+    
+    cfg.data.test.data_root = args.dataroot
+    cfg.data.test.ann_file = args.inforoot + 'nuscenes_infos_val.pkl'
+    print("############################################")
+    print(cfg.data.test)
+    
     # set multi-process settings
     setup_multi_processes(cfg)
 
@@ -163,6 +167,10 @@ def main():
 
     cfg.model.pretrained = None
 
+    cfg.data.test.data_root = args.dataroot
+    print("############################################")
+    print(cfg.data.test)
+    
     if args.gpu_ids is not None:
         cfg.gpu_ids = args.gpu_ids[0:1]
         warnings.warn('`--gpu-ids` is deprecated, please use `--gpu-id`. '
@@ -204,9 +212,6 @@ def main():
     # set random seeds
     if args.seed is not None:
         set_random_seed(args.seed, deterministic=args.deterministic)
-    
-    cfg.data.test.data_root = args.dataroot
-    print(cfg.data.test)
     
     # build the dataloader
     dataset = build_dataset(cfg.data.test)

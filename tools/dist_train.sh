@@ -2,7 +2,8 @@
 
 CONFIG=$1
 DATAROOT=$2
-GPUS=$3
+INFOROOT=$3
+GPUS=$4
 NNODES=${NNODES:-1}
 NODE_RANK=${NODE_RANK:-0}
 PORT=${PORT:-29500}
@@ -18,5 +19,6 @@ python -m torch.distributed.launch \
     $(dirname "$0")/train.py \
     $CONFIG \
     $DATAROOT \
+    $INFOROOT \
     --seed 0 \
-    --launcher pytorch ${@:3}
+    --launcher pytorch ${@:5}

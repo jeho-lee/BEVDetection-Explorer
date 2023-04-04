@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument('config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
     parser.add_argument('dataroot', help='data root of nuScenes')
+    parser.add_argument('inforoot', help='info pkl file root of nuScenes')
     parser.add_argument(
         '--resume-from', help='the checkpoint file to resume from')
     parser.add_argument(
@@ -117,11 +118,14 @@ def parse_args():
 def main():
     args = parse_args()
     
-    assert args.dataroot("Please specify dataroot")
-
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
+
+    cfg.data.train.data_root = args.dataroot
+    cfg.data.train.ann_file = args.inforoot + 'nuscenes_infos_train.pkl'
+    print("############################################")
+    print(cfg.data.train)
 
     # set multi-process settings
     setup_multi_processes(cfg)
@@ -218,9 +222,6 @@ def main():
     cfg.seed = seed
     meta['seed'] = seed
     meta['exp_name'] = osp.basename(args.config)
-    
-    cfg.data.train.data_root = args.dataroot
-    print(cfg.data.test)
 
     model = build_model(
         cfg.model,
