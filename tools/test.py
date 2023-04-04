@@ -38,6 +38,7 @@ def parse_args():
         description='MMDet test (and eval) a model')
     parser.add_argument('config', help='test config file path')
     parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('dataroot', help='data root of nuScenes')
     parser.add_argument('--out', help='output result file in pickle format')
     parser.add_argument(
         '--fuse-conv-bn',
@@ -130,10 +131,10 @@ def parse_args():
         args.eval_options = args.options
     return args
 
-# temp
-
 def main():
     args = parse_args()
+
+    assert args.dataroot("Please specify dataroot")
 
     assert args.out or args.eval or args.format_only or args.show \
         or args.show_dir, \
@@ -204,7 +205,7 @@ def main():
     if args.seed is not None:
         set_random_seed(args.seed, deterministic=args.deterministic)
     
-    cfg.data.test.data_root = '/data/home/jeholee/omni3D/data/nuscenes/'
+    cfg.data.test.data_root = args.dataroot
     print(cfg.data.test)
     
     # build the dataloader

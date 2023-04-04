@@ -34,6 +34,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
     parser.add_argument('config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
+    parser.add_argument('dataroot', help='data root of nuScenes')
     parser.add_argument(
         '--resume-from', help='the checkpoint file to resume from')
     parser.add_argument(
@@ -115,6 +116,8 @@ def parse_args():
 
 def main():
     args = parse_args()
+    
+    assert args.dataroot("Please specify dataroot")
 
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
@@ -215,6 +218,9 @@ def main():
     cfg.seed = seed
     meta['seed'] = seed
     meta['exp_name'] = osp.basename(args.config)
+    
+    cfg.data.train.data_root = args.dataroot
+    print(cfg.data.test)
 
     model = build_model(
         cfg.model,
