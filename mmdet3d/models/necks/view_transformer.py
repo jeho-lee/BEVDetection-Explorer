@@ -621,6 +621,7 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
         gt_depths = gt_depths.view(B * N, H // self.downsample,
                                    self.downsample, W // self.downsample,
                                    self.downsample, 1)
+        
         gt_depths = gt_depths.permute(0, 1, 3, 5, 2, 4).contiguous()
         gt_depths = gt_depths.view(-1, self.downsample * self.downsample)
         gt_depths_tmp = torch.where(gt_depths == 0.0,
@@ -629,22 +630,31 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
         gt_depths = torch.min(gt_depths_tmp, dim=-1).values
         gt_depths = gt_depths.view(B * N, H // self.downsample,
                                    W // self.downsample)
-
-        gt_depths = (
-            gt_depths -
-            (self.grid_config['depth'][0] -
-             self.grid_config['depth'][2])) / self.grid_config['depth'][2]
+        
+        gt_depths = (gt_depths - (self.grid_config['depth'][0] - self.grid_config['depth'][2])) / self.grid_config['depth'][2]
+        
         gt_depths = torch.where((gt_depths < self.D + 1) & (gt_depths >= 0.0),
                                 gt_depths, torch.zeros_like(gt_depths))
         gt_depths = F.one_hot(
             gt_depths.long(), num_classes=self.D + 1).view(-1, self.D + 1)[:,
                                                                            1:]
+            
         return gt_depths.float()
 
     @force_fp32()
     def get_depth_loss(self, depth_labels, depth_preds):
+        
+        # print("############initial shapes#############")
+        # print("depth_labels: ", depth_labels.shape) # torch.Size([8, 6, 256, 704]) => Batch_size, N_cam, H, W
+        # print("depth_preds: ", depth_preds.shape) # torch.Size([48, 112, 16, 44])
+        
         depth_labels = self.get_downsampled_gt_depth(depth_labels)
         depth_preds = depth_preds.permute(0, 2, 3, 1).contiguous().view(-1, self.D)
+        
+        # print("############cross_entropy_inputs#############")
+        # print("depth_labels: ", depth_labels.shape) # torch.Size([33792, 112])
+        # print("depth_preds: ", depth_preds.shape) # torch.Size([33792, 112])
+        
         fg_mask = torch.max(depth_labels, dim=1).values > 0.0
         depth_labels = depth_labels[fg_mask]
         depth_preds = depth_preds[fg_mask]
@@ -656,6 +666,36 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
                 reduction='none',
             ).sum() / max(1.0, fg_mask.sum())
         return self.loss_depth_weight * depth_loss
+
+    @force_fp32()
+    def get_depth_loss_solofusion(self, depth_gt, depth_preds):
+        B, N, H, W = depth_gt.shape
+        fg_mask = (depth_gt != 0).view(-1)
+        depth_gt = (depth_gt - self.grid_config['depth'][0]) / self.grid_config['depth'][2]
+        depth_gt = torch.clip(torch.floor(depth_gt), 0, self.D).to(torch.long)
+        
+        assert depth_gt.max() < self.D
+        
+        depth_gt_logit = F.one_hot(depth_gt.reshape(-1), num_classes=self.D)
+        
+        depth_gt_logit = depth_gt_logit.reshape(B, N, H, W, self.D).permute(
+                                                    0, 1, 4, 2, 3).to(torch.float32) # B x N x D x H x W
+        
+        # depth_preds = depth_preds.view(B, N, self.D, H, W).softmax(dim=2)
+        
+        depth_preds = depth_preds.softmax(dim=2)
+        
+        depth_gt_logit = depth_gt_logit.permute(0, 1, 3, 4, 2).view(-1, self.D)
+        
+        depth_preds = depth_preds.permute(0, 1, 3, 4, 2).contiguous().view(-1, self.D)
+
+        loss_depth = (F.binary_cross_entropy(
+                depth_preds[fg_mask],
+                depth_gt_logit[fg_mask],
+                reduction='none',
+            ).sum() / max(1.0, fg_mask.sum()))
+        loss_depth = self.loss_depth_weight * loss_depth
+        return loss_depth
 
     def forward(self, input):
         (x, rots, trans, intrins, post_rots, post_trans, bda, mlp_input) = input[:8]

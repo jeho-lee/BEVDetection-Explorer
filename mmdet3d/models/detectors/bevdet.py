@@ -30,14 +30,19 @@ class BEVDet(CenterPoint):
         imgs = img
         B, N, C, imH, imW = imgs.shape
         imgs = imgs.view(B * N, C, imH, imW)
-        x = self.img_backbone(imgs)
-        if self.with_img_neck:
-            x = self.img_neck(x)
-            if type(x) in [list, tuple]:
-                x = x[0]
-        _, output_dim, ouput_H, output_W = x.shape
-        x = x.view(B, N, output_dim, ouput_H, output_W)
-        return x
+        
+        # e.g., (6 cam, 256 H, 704 W) => downsampled by 16 => (6 cam, 16, 44)
+        backbone_feats = self.img_backbone(imgs)
+        
+        neck_feats = self.img_neck(backbone_feats)
+        if isinstance(neck_feats, list):
+            assert len(neck_feats) == 1 # SECONDFPN returns a length-one list
+            neck_feats = neck_feats[0] # torch.Size([48, 512, 16, 44]): Same between SECONDFPN and CustomFPN
+        
+        _, output_dim, ouput_H, output_W = neck_feats.shape
+        neck_feats = neck_feats.view(B, N, output_dim, ouput_H, output_W)
+        
+        return neck_feats # B, N, C, H, W
 
     @force_fp32()
     def bev_encoder(self, x):
@@ -278,11 +283,19 @@ class BEVDepth(BEVDet):
         """
         img_feats, pts_feats, depth = self.extract_feat(
             points, img=img_inputs, img_metas=img_metas, **kwargs)
+        
+        # Get depth loss (only for training)
         gt_depth = kwargs['gt_depth']
-        loss_depth = self.img_view_transformer.get_depth_loss(gt_depth, depth)
+        
+        loss_depth = self.img_view_transformer.get_depth_loss(gt_depth, depth) # BEVDet
+        # loss_depth = self.img_view_transformer.get_depth_loss_solofusion(gt_depth, depth) # SOLOFusion
+        
         losses = dict(loss_depth=loss_depth)
+        
+        # Get bbox prediction loss
         losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
                                             gt_labels_3d, img_metas,
                                             gt_bboxes_ignore)
         losses.update(losses_pts)
+        
         return losses

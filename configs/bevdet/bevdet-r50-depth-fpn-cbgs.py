@@ -1,3 +1,10 @@
+"""
+2023-4-5 JEHO
+
+1. Change BEVDet's custom FPN to SECONDFPN
+
+"""
+
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 _base_ = ['../_base_/datasets/nus-3d.py', '../_base_/default_runtime.py']
@@ -33,7 +40,8 @@ grid_config = {
     'x': [-51.2, 51.2, 0.8],
     'y': [-51.2, 51.2, 0.8],
     'z': [-5, 3, 8],
-    'depth': [1.0, 60.0, 1.0]
+    # 'depth': [1.0, 60.0, 1.0], # bevdet
+    'depth': [2.0, 58.0, 0.5], # BEVDepth
 }
 
 voxel_size = [0.1, 0.1, 0.2] # For CenterHead
@@ -42,24 +50,26 @@ numC_Trans = 80 # BEV channels
 
 model = dict(
     type='BEVDepth',
+    
+    # Standard Resnet50 + FPN for image feature extraction
     img_backbone=dict(
         pretrained='torchvision://resnet50',
         type='ResNet',
         depth=50,
         num_stages=4,
-        out_indices=(2, 3),
-        frozen_stages=-1,
+        out_indices=(0, 1, 2, 3), # SECONDFPN in BEVDepth
+        frozen_stages=0,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=False,
         with_cp=True,
         style='pytorch'),
     img_neck=dict(
-        type='CustomFPN',
-        in_channels=[1024, 2048],
-        out_channels=512,
-        num_outs=1,
-        start_level=0,
-        out_ids=[0]),
+        type='SECONDFPN',
+        in_channels=[256, 512, 1024, 2048],
+        out_channels=[128, 128, 128, 128],
+        upsample_strides=[0.25, 0.5, 1, 2]),
+    
+    # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
         type='LSSViewTransformerBEVDepth',
         grid_config=grid_config,
@@ -71,14 +81,22 @@ model = dict(
         # In BEVDepth, the default setting is to use dcn
         depthnet_cfg=dict(use_dcn=False, use_aspp=True),
         downsample=16),
+    
+    # BEV encoding before detection head
     img_bev_encoder_backbone=dict(
         type='CustomResNet',
         numC_input=numC_Trans,
-        num_channels=[numC_Trans * 2, numC_Trans * 4, numC_Trans * 8]),
+        num_channels=[numC_Trans * 2, 
+                      numC_Trans * 4, 
+                      numC_Trans * 8],
+        backbone_output_ids=[-1, 0, 1, 2]),
     img_bev_encoder_neck=dict(
-        type='FPN_LSS',
-        in_channels=numC_Trans * 8 + numC_Trans * 2,
-        out_channels=256),
+        type='SECONDFPN',
+        in_channels=[numC_Trans, 160, 320, 640],
+        upsample_strides=[1, 2, 4, 8],
+        out_channels=[64, 64, 64, 64]),
+    
+    # BEVDet's detection head
     pts_bbox_head=dict(
         type='CenterHead',
         in_channels=256,
@@ -107,6 +125,7 @@ model = dict(
         loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
         loss_bbox=dict(type='L1Loss', reduction='mean', loss_weight=0.25),
         norm_bbox=True),
+    
     # model training and testing settings
     train_cfg=dict(
         pts=dict(

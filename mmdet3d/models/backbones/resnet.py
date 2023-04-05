@@ -74,6 +74,11 @@ class CustomResNet(nn.Module):
     def forward(self, x):
         feats = []
         x_tmp = x
+        
+        # SOLOFusion
+        if -1 in self.backbone_output_ids: 
+            feats.append(x)
+            
         for lid, layer in enumerate(self.layers):
             if self.with_cp:
                 x_tmp = checkpoint.checkpoint(layer, x_tmp)
