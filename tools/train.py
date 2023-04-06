@@ -34,8 +34,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
     parser.add_argument('config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
-    parser.add_argument('dataroot', help='data root of nuScenes')
-    parser.add_argument('inforoot', help='info pkl file root of nuScenes')
     parser.add_argument(
         '--resume-from', help='the checkpoint file to resume from')
     parser.add_argument(
@@ -225,13 +223,6 @@ def main():
     model.init_weights()
 
     logger.info(f'Model:\n{model}')
-    
-    cfg.data.train.data_root = args.dataroot
-    cfg.data.train.ann_file = args.inforoot + 'nuscenes_infos_train.pkl'
-    cfg.data.train.dataset.data_root = args.dataroot
-    cfg.data.train.dataset.ann_file = args.inforoot + 'nuscenes_infos_train.pkl'
-    print("############################################")
-    print(cfg.data.train)
     
     datasets = [build_dataset(cfg.data.train)]
     print(datasets)
