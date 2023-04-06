@@ -1,13 +1,6 @@
-"""
-2023-4-5 JEHO
-
-1. Change BEVDet's custom FPN to SECONDFPN
-
-"""
-
 # Copyright (c) Phigent Robotics. All rights reserved.
 
-_base_ = ['../_base_/datasets/nus-3d.py', '../_base_/default_runtime.py']
+_base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
@@ -162,8 +155,7 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/datasets/nuscenes/' # AI datacenter
-ann_root = '/home/dlwpgh1994/3D-perception/data'
+data_root = '/data/home/jeholee/omni3D/data/nuscenes/' # TODO
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
@@ -244,7 +236,7 @@ share_data_config = dict(
 test_data_config = dict(
     pipeline=test_pipeline,
     data_root=data_root,
-    ann_file=ann_root + 'bevdetv2-nuscenes_infos_val.pkl')
+    ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
 
 num_gpu = 8
 batch_size_per_device = 8
@@ -257,7 +249,7 @@ data = dict(
         type='CBGSDataset',
         dataset=dict(
         data_root=data_root,
-        ann_file=ann_root + 'bevdetv2-nuscenes_infos_train.pkl',
+        ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
