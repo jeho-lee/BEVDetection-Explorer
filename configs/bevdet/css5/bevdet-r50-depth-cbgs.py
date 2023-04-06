@@ -1,3 +1,15 @@
+"""
+Configuraion Change History
+
+2023-4-5 (css5)
+- SECOND FPN (image neck, bev neck)
+- grid config from BEVDepth
+
+2023-4-6 (ai datacenter)
+- lr, weight_decay, optimizer_config (from BEVDepth, SOLOFusion)
+- No autoscale_lr
+"""
+
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
