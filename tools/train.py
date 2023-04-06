@@ -122,11 +122,6 @@ def main():
     if args.cfg_options is not None:
         cfg.merge_from_dict(args.cfg_options)
 
-    cfg.data.train.data_root = args.dataroot
-    cfg.data.train.ann_file = args.inforoot + 'nuscenes_infos_train.pkl'
-    print("############################################")
-    print(cfg.data.train)
-
     # set multi-process settings
     setup_multi_processes(cfg)
 
@@ -230,7 +225,17 @@ def main():
     model.init_weights()
 
     logger.info(f'Model:\n{model}')
+    
+    cfg.data.train.data_root = args.dataroot
+    cfg.data.train.ann_file = args.inforoot + 'nuscenes_infos_train.pkl'
+    cfg.data.train.dataset.data_root = args.dataroot
+    cfg.data.train.dataset.ann_file = args.inforoot + 'nuscenes_infos_train.pkl'
+    print("############################################")
+    print(cfg.data.train)
+    
     datasets = [build_dataset(cfg.data.train)]
+    print(datasets)
+    
     if len(cfg.workflow) == 2:
         val_dataset = copy.deepcopy(cfg.data.val)
         # in case we use a dataset wrapper
