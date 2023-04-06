@@ -86,8 +86,8 @@ model = dict(
     img_bev_encoder_backbone=dict(
         type='CustomResNet',
         numC_input=numC_Trans,
-        num_channels=[numC_Trans * 2, 
-                      numC_Trans * 4, 
+        num_channels=[numC_Trans * 2,
+                      numC_Trans * 4,
                       numC_Trans * 8],
         backbone_output_ids=[-1, 0, 1, 2]),
     img_bev_encoder_neck=dict(
@@ -179,7 +179,7 @@ train_pipeline = [
     
     # Data augmentation
     dict(
-        type='LoadAnnotationsBEVDepth', 
+        type='LoadAnnotationsBEVDepth',
         bda_aug_conf=bda_aug_conf,
         classes=class_names),
     
@@ -245,9 +245,12 @@ test_data_config = dict(
     data_root=data_root,
     ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
 
-# Training Config (2023-3-31 by Jeho Lee)
+num_gpu = 8
+batch_size_per_device = 8
+
+# Training Config (2023-4-6 by Jeho Lee)
 data = dict(
-    samples_per_gpu=8, # If use 8 GPUs, total batch size is 8*8=64
+    samples_per_gpu=batch_size_per_device, # If use 8 GPUs, total batch size is 8*8=64
     workers_per_gpu=4,
     train=dict(
         type='CBGSDataset',
@@ -268,15 +271,20 @@ for key in ['val', 'test']:
     data[key].update(share_data_config)
 data['train']['dataset'].update(share_data_config)
 
+lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
+weight_decay = 1e-7 # 1e-2 in bevdet
+
 # Optimizer
-optimizer = dict(type='AdamW', lr=2e-4, weight_decay=1e-2)
+optimizer = dict(type='AdamW', lr=lr, weight_decay=weight_decay)
 optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
+
 lr_config = dict(
     policy='step',
     warmup='linear',
-    warmup_iters=200,
+    warmup_iters=500,
     warmup_ratio=0.001,
-    step=[20,])
+    step=[16, 22])
+    # step=[20,]) # bevdet
 runner = dict(type='EpochBasedRunner', max_epochs=24) # 24 epochs
 
 custom_hooks = [
@@ -286,47 +294,3 @@ custom_hooks = [
         priority='NORMAL',
     ),
 ]
-
-# Training Config (Original)
-# data = dict(
-#     samples_per_gpu=8,
-#     workers_per_gpu=4,
-#     train=dict(
-#         type='CBGSDataset',
-#         dataset=dict(
-#         data_root=data_root,
-#         ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
-#         pipeline=train_pipeline,
-#         classes=class_names,
-#         test_mode=False,
-#         use_valid_flag=True,
-#         # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
-#         # and box_type_3d='Depth' in sunrgbd and scannet dataset.
-#         box_type_3d='LiDAR')),
-#     val=test_data_config,
-#     test=test_data_config)
-
-# for key in ['val', 'test']:
-#     data[key].update(share_data_config)
-# data['train']['dataset'].update(share_data_config)
-
-# # Optimizer
-# optimizer = dict(type='AdamW', lr=2e-4, weight_decay=1e-2)
-# optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
-# lr_config = dict(
-#     policy='step',
-#     warmup='linear',
-#     warmup_iters=200,
-#     warmup_ratio=0.001,
-#     step=[20,])
-# runner = dict(type='EpochBasedRunner', max_epochs=20)
-
-# custom_hooks = [
-#     dict(
-#         type='MEGVIIEMAHook',
-#         init_updates=10560,
-#         priority='NORMAL',
-#     ),
-# ]
-
-# # fp16 = dict(loss_scale='dynamic')
