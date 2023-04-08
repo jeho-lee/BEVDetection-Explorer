@@ -15,8 +15,8 @@ Current Change
 
 2023-4-7 (css5)
 - ConvNeXt-base backbone (from SOLOFusion)
-- Batch size per GPU: 4 (due to memory limit)
-- lr: 0.0001
+- Batch size per GPU: 2 (due to memory limit) => total 16
+- lr: 0.00005
 
 """
 
@@ -83,7 +83,7 @@ model = dict(
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[128, 256, 512, 1024], # BEVDepth-'r50' [256, 512, 1024, 2048]
+        in_channels=[128, 256, 512, 1024],
         out_channels=[128, 128, 128, 128],
         upsample_strides=[0.25, 0.5, 1, 2]),
 
@@ -282,7 +282,7 @@ test_data_config = dict(
     ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
 
 num_gpu = 8
-batch_size_per_device = 4 # due to the memory limitation
+batch_size_per_device = 2 # due to the memory limitation
 
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
