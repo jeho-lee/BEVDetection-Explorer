@@ -13,7 +13,7 @@ Configuraion Change History
 
 Current Change
 
-2023-4-7 (css5)
+2023-4-7 (ai datacenter)
 - ConvNeXt-base backbone (from SOLOFusion)
 - Batch size per GPU: 4 (due to memory limit)
 - lr: 0.0001
@@ -198,7 +198,8 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/data/home/jeholee/omni3D/data/nuscenes/' # TODO
+data_root = '/datasets/nuscenes/' # AI datacenter
+ann_root = '/home/dlwpgh1994/3D-perception/data/'
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
@@ -279,7 +280,7 @@ share_data_config = dict(
 test_data_config = dict(
     pipeline=test_pipeline,
     data_root=data_root,
-    ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
+    ann_file=data_root + 'nuscenes_infos_val.pkl')
 
 num_gpu = 8
 batch_size_per_device = 4 # due to the memory limitation
@@ -292,7 +293,7 @@ data = dict(
         type='CBGSDataset',
         dataset=dict(
         data_root=data_root,
-        ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
+        ann_file=data_root + 'nuscenes_infos_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
