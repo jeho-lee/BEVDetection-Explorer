@@ -12,8 +12,11 @@ Configuraion Change History
 - No autoscale_lr
 
 Current Change
+
 2023-4-7 (css5)
-- ConvNeXt backbone (from SOLOFusion)
+- ConvNeXt-base backbone (from SOLOFusion)
+- Batch size per GPU: 4 (due to memory limit)
+- lr: 0.0001
 
 """
 
@@ -67,31 +70,40 @@ numC_Trans = 80 # BEV channels
 model = dict(
     type='BEVDepth',
     
-    # img_backbone=dict(
-    #     type='ConvNeXt',
-    #     arch='base', # output channels [128, 256, 512, 1024]
-    #     out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
-    #     frozen_stages=0,
-    #     with_cp=with_cp,
-    #     init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
-    
+    # ConvNeXt backbone
     img_backbone=dict(
-        pretrained='torchvision://resnet50',
-        type='ResNet',
-        depth=50,
-        num_stages=4,
-        out_indices=(0, 1, 2, 3), # SECONDFPN in BEVDepth
+        type='ConvNeXt',
+        arch='base', # output channels [128, 256, 512, 1024]
+        out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
         frozen_stages=0,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        norm_eval=False,
-        with_cp=True,
-        style='pytorch'),
-    
+        with_cp=with_cp,
+        gap_before_final_norm=False, # Whether to globally average the feature
+                                    # map before the final norm layer. In the official repo, it's only
+                                    # used in classification task. Defaults to True.
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
         in_channels=[128, 256, 512, 1024], # BEVDepth-'r50' [256, 512, 1024, 2048]
         out_channels=[128, 128, 128, 128],
         upsample_strides=[0.25, 0.5, 1, 2]),
+
+    # Resnet50 backbone
+    # img_backbone=dict(
+    #     pretrained='torchvision://resnet50',
+    #     type='ResNet',
+    #     depth=50,
+    #     num_stages=4,
+    #     out_indices=(0, 1, 2, 3), # SECONDFPN in BEVDepth
+    #     frozen_stages=0,
+    #     norm_cfg=dict(type='BN', requires_grad=True),
+    #     norm_eval=False,
+    #     with_cp=True,
+    #     style='pytorch'),
+    # img_neck=dict(
+    #     type='SECONDFPN',
+    #     in_channels=[256, 512, 1024, 2048], # BEVDepth-'r50' [256, 512, 1024, 2048]
+    #     out_channels=[128, 128, 128, 128],
+    #     upsample_strides=[0.25, 0.5, 1, 2]),
     
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
@@ -270,7 +282,7 @@ test_data_config = dict(
     ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
 
 num_gpu = 8
-batch_size_per_device = 8
+batch_size_per_device = 4 # due to the memory limitation
 
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
@@ -296,7 +308,7 @@ for key in ['val', 'test']:
 data['train']['dataset'].update(share_data_config)
 
 lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-weight_decay = 1e-7 # 1e-2 in bevdet
+weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
 
 # Optimizer
 optimizer = dict(type='AdamW', lr=lr, weight_decay=weight_decay)

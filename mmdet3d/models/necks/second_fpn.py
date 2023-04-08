@@ -83,19 +83,6 @@ class SECONDFPN(BaseModule):
         """
         assert len(x) == len(self.in_channels)
         
-        for feat in x:
-            print("#############################################")
-            print("backbone_feats.shape:", feat.shape)
-        
-        # #############################################
-        # backbone_feats.shape: torch.Size([12, 128])
-        # #############################################
-        # backbone_feats.shape: torch.Size([12, 256])
-        # #############################################
-        # backbone_feats.shape: torch.Size([12, 512])
-        # #############################################
-        # backbone_feats.shape: torch.Size([12, 1024])
-        
         ups = [deblock(x[i]) for i, deblock in enumerate(self.deblocks)]
 
         if len(ups) > 1:
