@@ -10,8 +10,10 @@ from .pointnet2_sa_ssg import PointNet2SASSG
 from .resnet import CustomResNet
 from .second import SECOND
 
+from .convnext import ConvNeXt
+
 __all__ = [
     'ResNet', 'ResNetV1d', 'ResNeXt', 'SSDVGG', 'HRNet', 'NoStemRegNet',
     'SECOND', 'DGCNNBackbone', 'PointNet2SASSG', 'PointNet2SAMSG',
-    'MultiBackbone', 'DLANet', 'MinkResNet', 'CustomResNet'
+    'MultiBackbone', 'DLANet', 'MinkResNet', 'CustomResNet', 'ConvNeXt'
 ]
