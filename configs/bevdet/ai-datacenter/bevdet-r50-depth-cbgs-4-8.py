@@ -77,22 +77,37 @@ numC_Trans = 80 # BEV channels
 model = dict(
     type='BEVDepth',
     
-    # ConvNeXt backbone
+    # EfficientNet backbone
     img_backbone=dict(
-        type='ConvNeXt',
-        arch='base', # output channels [128, 256, 512, 1024]
-        out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
-        frozen_stages=0,
-        with_cp=with_cp,
-        gap_before_final_norm=False, # Whether to globally average the feature
-                                    # map before the final norm layer. In the official repo, it's only
-                                    # used in classification task. Defaults to True.
+        type='EfficientNet',
+        arch='b2',
+        
+        
+        
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+    
     img_neck=dict(
         type='SECONDFPN',
         in_channels=[128, 256, 512, 1024], # BEVDepth-'r50' [256, 512, 1024, 2048]
         out_channels=[128, 128, 128, 128],
         upsample_strides=[0.25, 0.5, 1, 2]),
+    
+    # # ConvNeXt backbone
+    # img_backbone=dict(
+    #     type='ConvNeXt',
+    #     arch='base', # output channels [128, 256, 512, 1024]
+    #     out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
+    #     frozen_stages=0,
+    #     with_cp=with_cp,
+    #     gap_before_final_norm=False, # Whether to globally average the feature
+    #                                 # map before the final norm layer. In the official repo, it's only
+    #                                 # used in classification task. Defaults to True.
+    #     init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+    # img_neck=dict(
+    #     type='SECONDFPN',
+    #     in_channels=[128, 256, 512, 1024], # BEVDepth-'r50' [256, 512, 1024, 2048]
+    #     out_channels=[128, 128, 128, 128],
+    #     upsample_strides=[0.25, 0.5, 1, 2]),
 
     # Resnet50 backbone
     # img_backbone=dict(

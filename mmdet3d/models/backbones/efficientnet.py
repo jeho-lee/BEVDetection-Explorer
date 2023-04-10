@@ -8,15 +8,11 @@ import torch.nn as nn
 import torch.utils.checkpoint as cp
 from mmcv.cnn.bricks import ConvModule, DropPath
 
-# from mmengine.model import BaseModule, Sequential
 from mmcv.runner import BaseModule
 from mmcv.runner.base_module import ModuleList, Sequential
 
-# TODO
-from mmpretrain.models.utils import InvertedResidual, SELayer, make_divisible
-
+from ..utils import InvertedResidual, SELayer, make_divisible
 from ..builder import BACKBONES
-
 
 class EdgeResidual(BaseModule):
     """Edge Residual Block.
