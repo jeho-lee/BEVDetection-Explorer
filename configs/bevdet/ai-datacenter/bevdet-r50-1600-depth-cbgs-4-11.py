@@ -1,5 +1,3 @@
-# Copyright (c) Phigent Robotics. All rights reserved.
-
 """
 Configuraion Change History
 
@@ -11,17 +9,13 @@ Configuraion Change History
 - lr, weight_decay, optimizer_config (from BEVDepth, SOLOFusion)
 - No autoscale_lr
 
-2023-4-7 (css5)
-- ConvNeXt-base backbone (from SOLOFusion)
-- Batch size per GPU: 2 (due to memory limit) => total 16
-- lr: 0.00005
-
-Current Change
 2023-4-11 (css5)
-- with_cp = True => training 시간보다는 training 시 GPU 메모리를 많이 절약해주는 듯
-- batch size per GPU = 4
-- lr = 2e-4
+- Image resolution = (640, 1600)
+- batch size per gpu = 2
+
 """
+
+# Copyright (c) Phigent Robotics. All rights reserved.
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
@@ -40,7 +34,10 @@ data_config = {
         'CAM_BACK', 'CAM_BACK_RIGHT'
     ],
     'Ncams': 6,
-    'input_size': (256, 704),
+    
+    # 'input_size': (256, 704),
+    'input_size': (640, 1600),
+    
     'src_size': (900, 1600),
 
     # Augmentation
@@ -60,12 +57,6 @@ grid_config = {
     'depth': [2.0, 58.0, 0.5], # BEVDepth
 }
 
-# Image backbone checkpoint
-checkpoint = 'https://download.openmmlab.com/mmclassification/v0/convnext/convnext-base_3rdparty_in21k_20220124-13b83eec.pth'
-
-# Intermediate Checkpointing to save GPU memory.
-with_cp = True
-
 voxel_size = [0.1, 0.1, 0.2] # For CenterHead
 
 numC_Trans = 80 # BEV channels
@@ -73,23 +64,24 @@ numC_Trans = 80 # BEV channels
 model = dict(
     type='BEVDepth',
     
-    # ConvNeXt backbone
+    # Standard Resnet50 + FPN for image feature extraction
     img_backbone=dict(
-        type='ConvNeXt',
-        arch='base', # output channels [128, 256, 512, 1024]
-        out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
+        pretrained='torchvision://resnet50',
+        type='ResNet',
+        depth=50,
+        num_stages=4,
+        out_indices=(0, 1, 2, 3), # SECONDFPN in BEVDepth
         frozen_stages=0,
-        with_cp=with_cp,
-        gap_before_final_norm=False, # Whether to globally average the feature
-                                    # map before the final norm layer. In the official repo, it's only
-                                    # used in classification task. Defaults to True.
-        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+        norm_cfg=dict(type='BN', requires_grad=True),
+        norm_eval=False,
+        with_cp=True,
+        style='pytorch'),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[128, 256, 512, 1024],
+        in_channels=[256, 512, 1024, 2048],
         out_channels=[128, 128, 128, 128],
         upsample_strides=[0.25, 0.5, 1, 2]),
-
+    
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
         type='LSSViewTransformerBEVDepth',
@@ -267,7 +259,7 @@ test_data_config = dict(
     ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
 
 num_gpu = 8
-batch_size_per_device = 4 # due to the memory limitation
+batch_size_per_device = 2
 
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
@@ -292,9 +284,8 @@ for key in ['val', 'test']:
     data[key].update(share_data_config)
 data['train']['dataset'].update(share_data_config)
 
-# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-lr = 2e-4
-weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
+lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
+weight_decay = 1e-7 # 1e-2 in bevdet
 
 # Optimizer
 optimizer = dict(type='AdamW', lr=lr, weight_decay=weight_decay)
