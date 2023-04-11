@@ -12,7 +12,7 @@ Configuraion Change History
 2023-4-11 (css5)
 - Image resolution = (640, 1600)
 - batch size per gpu = 2
-
+- lr = 2e-4
 """
 
 # Copyright (c) Phigent Robotics. All rights reserved.
@@ -175,7 +175,8 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/data/home/jeholee/omni3D/data/nuscenes/' # TODO
+data_root = '/datasets/nuscenes/' # AI datacenter
+ann_root = '/home/dlwpgh1994/3D-perception/data/'
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
@@ -256,7 +257,7 @@ share_data_config = dict(
 test_data_config = dict(
     pipeline=test_pipeline,
     data_root=data_root,
-    ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
+    ann_file=ann_root + 'nuscenes_infos_val.pkl')
 
 num_gpu = 8
 batch_size_per_device = 2
@@ -269,7 +270,7 @@ data = dict(
         type='CBGSDataset',
         dataset=dict(
         data_root=data_root,
-        ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
+        ann_file=ann_root + 'nuscenes_infos_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -284,7 +285,8 @@ for key in ['val', 'test']:
     data[key].update(share_data_config)
 data['train']['dataset'].update(share_data_config)
 
-lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
+# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
+lr = 2e-4
 weight_decay = 1e-7 # 1e-2 in bevdet
 
 # Optimizer
