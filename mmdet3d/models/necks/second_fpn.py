@@ -83,8 +83,16 @@ class SECONDFPN(BaseModule):
         """
         assert len(x) == len(self.in_channels)
         
+        # for feat in x:
+        #     print("#################")
+        #     print("feat.shape: ", feat.shape)
+      
         ups = [deblock(x[i]) for i, deblock in enumerate(self.deblocks)]
 
+        # for upsampled_feat in ups:
+        #     print("#################")
+        #     print("upsampled_feat.shape: ", upsampled_feat.shape)
+        
         if len(ups) > 1:
             out = torch.cat(ups, dim=1)
         else:

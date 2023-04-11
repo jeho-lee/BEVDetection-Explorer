@@ -11,9 +11,12 @@ from .resnet import CustomResNet
 from .second import SECOND
 
 from .convnext import ConvNeXt
+from .efficientnet import EfficientNet
+from .efficientnet_v2 import EfficientNetV2
 
 __all__ = [
     'ResNet', 'ResNetV1d', 'ResNeXt', 'SSDVGG', 'HRNet', 'NoStemRegNet',
     'SECOND', 'DGCNNBackbone', 'PointNet2SASSG', 'PointNet2SAMSG',
-    'MultiBackbone', 'DLANet', 'MinkResNet', 'CustomResNet', 'ConvNeXt'
+    'MultiBackbone', 'DLANet', 'MinkResNet', 'CustomResNet', 
+    'ConvNeXt', 'EfficientNet', 'EfficientNetV2'
 ]

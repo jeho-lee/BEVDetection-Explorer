@@ -389,7 +389,10 @@ class EfficientNet(BaseModule):
         outs = []
         for i, layer in enumerate(self.layers):
             x = layer(x)
+            print("#######################")
+            print("x.shape ", x.shape)
             if i in self.out_indices:
+                print("out_index: ", i)
                 outs.append(x)
 
         return tuple(outs)
