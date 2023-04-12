@@ -32,7 +32,6 @@ class LSSViewTransformer(BaseModule):
             acceleration. Note: the intrinsic and extrinsic of cameras should
             be constant when 'accelerate' is set true.
     """
-
     def __init__(
         self,
         grid_config,
