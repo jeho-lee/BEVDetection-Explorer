@@ -1,26 +1,29 @@
-"""
-Configuraion Change History
-
-2023-4-5 (css5)
-- SECOND FPN (image neck, bev neck)
-- grid config from BEVDepth
-
-2023-4-6 (ai datacenter)
-- lr, weight_decay, optimizer_config (from BEVDepth, SOLOFusion)
-- No autoscale_lr
-
-2023-4-11 (css5)
-- Image resolution = (640, 1600)
-- batch size per gpu = 2
-- lr = 2e-4
-"""
-
 # Copyright (c) Phigent Robotics. All rights reserved.
+
+"""
+- EfficientNetV2-m backbone
+- batch_size_per_device: 2
+- lr: 2e-4
+- find_unused_parameters = True
+
+[Current Change]
+- EfficientNetV2-large backbone
+- Image resolution = (640, 1600)
+- batch_size_per_device: 3
+- lr: (2e-4 / 64) * (num_gpu * batch_size_per_device)
+- find_unused_parameters = True
+"""
+
+# Training configurations
+num_gpu = 8
+batch_size_per_device = 3
+
+lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
+weight_decay = 1e-7 # 1e-2 in bevdet
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
-# If point cloud range is changed, the models should also change their point
-# cloud range accordingly
+# If point cloud range is changed, the models should also change their point cloud range accordingly
 point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
 # For nuScenes we usually do 10-class detection
 class_names = [
@@ -34,10 +37,7 @@ data_config = {
         'CAM_BACK', 'CAM_BACK_RIGHT'
     ],
     'Ncams': 6,
-    
-    # 'input_size': (256, 704),
     'input_size': (640, 1600),
-    
     'src_size': (900, 1600),
 
     # Augmentation
@@ -57,30 +57,62 @@ grid_config = {
     'depth': [2.0, 58.0, 0.5], # BEVDepth
 }
 
-voxel_size = [0.1, 0.1, 0.2] # For CenterHead
+# Image backbone checkpoint
 
+# EfficientNet
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b2_3rdparty-ra-noisystudent_in1k_20221103-301ed299.pth'
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b6_3rdparty-ra-noisystudent_in1k_20221103-7de7d2cc.pth'
+
+# EfficientNetV2
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-s_3rdparty_in21k_20221220-c0572b56.pth' # efficientnetv2-s
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-m_3rdparty_in21k_20221220-073e944c.pth' # efficientnetv2-m
+checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-l_3rdparty_in21k_20221220-f28f91e1.pth' # efficientnetv2-l
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-xl_3rdparty_in21k_20221220-b2c9329c.pth' # efficientnetv2-xl
+
+# LeViT
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-192_3rdparty_in1k_20230117-8217a0f9.pth' # 192
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-256_3rdparty_in1k_20230117-5ae2ce7d.pth' # 256
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-384_3rdparty_in1k_20230117-f3539cce.pth' # 384
+
+voxel_size = [0.1, 0.1, 0.2] # For CenterHead
 numC_Trans = 80 # BEV channels
+
+# Intermediate Checkpointing to save GPU memory.
+with_cp = False # Not support for EfficientNetV2
+
+# EfficientNetV2
+find_unused_parameters = True
 
 model = dict(
     type='BEVDepth',
     
-    # Standard Resnet50 + FPN for image feature extraction
+    # EfficientNetV2 backbone
     img_backbone=dict(
-        pretrained='torchvision://resnet50',
-        type='ResNet',
-        depth=50,
-        num_stages=4,
-        out_indices=(0, 1, 2, 3), # SECONDFPN in BEVDepth
+        type='EfficientNetV2',
+        arch='l',
+        out_indices=[4, 5, 6, 7],
         frozen_stages=0,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        norm_eval=False,
-        with_cp=True,
-        style='pytorch'),
+        with_cp=with_cp,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[256, 512, 1024, 2048],
+        in_channels=[160, 176, 304, 512],
         out_channels=[128, 128, 128, 128],
-        upsample_strides=[0.25, 0.5, 1, 2]),
+        upsample_strides=[1, 1, 2, 2]),
+        
+    # EfficientNet backbone
+    # img_backbone=dict(
+    #     type='EfficientNet',
+    #     arch='b2',
+    #     out_indices=[3, 4, 5, 6],
+    #     frozen_stages=0,
+    #     with_cp=with_cp,
+    #     init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
+    # img_neck=dict(
+    #     type='SECONDFPN',
+    #     in_channels=[48, 120, 352, 1408],
+    #     out_channels=[128, 128, 128, 128],
+    #     upsample_strides=[0.25, 0.5, 1, 2]),
     
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
@@ -175,8 +207,9 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/datasets/nuscenes/' # AI datacenter
-ann_root = '/home/dlwpgh1994/3D-perception/data/'
+data_root = '/datasets/nuscenes/'
+# ann_root = '/home/dlwpgh1994/3D-perception/data/'
+ann_root = '../../data/'
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
@@ -259,9 +292,6 @@ test_data_config = dict(
     data_root=data_root,
     ann_file=ann_root + 'nuscenes_infos_val.pkl')
 
-num_gpu = 8
-batch_size_per_device = 2
-
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
     samples_per_gpu=batch_size_per_device, # If use 8 GPUs, total batch size is 8*8=64
@@ -284,10 +314,6 @@ data = dict(
 for key in ['val', 'test']:
     data[key].update(share_data_config)
 data['train']['dataset'].update(share_data_config)
-
-# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-lr = 2e-4
-weight_decay = 1e-7 # 1e-2 in bevdet
 
 # Optimizer
 optimizer = dict(type='AdamW', lr=lr, weight_decay=weight_decay)
