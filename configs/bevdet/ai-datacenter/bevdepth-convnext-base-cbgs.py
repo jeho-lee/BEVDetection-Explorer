@@ -1,24 +1,28 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 """
-2023-4-8 (ai-datacenter)
-- EfficientNetV2-m backbone
-- batch_size_per_device: 2
-- lr: 2e-4
-- find_unused_parameters = True
 
-2023-4-12
-- EfficientNetV2-s backbone
-- find_unused_parameters = True
-- batch_size_per_device: 
-- lr: 
+2023-4-7 (css5)
+- ConvNeXt-base backbone (from SOLOFusion)
+- Batch size per GPU: 2 (due to memory limit) => total 16
+- lr: 0.00005
 
+2023-4-11
+- with_cp = True => training 시간보다는 training 시 GPU 메모리를 많이 절약해주는 듯
+- batch size per GPU = 4
+- lr = 2e-4
+- weight decay = 1e-7
+
+2023-4-15
+- lr = 4e-4
+- weight decay = 1e-2
 """
 
 num_gpu = 8
-batch_size_per_device = 8
-lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
+batch_size_per_device = 4 # due to the memory limitation
+# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
+lr = 4e-4
+weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
@@ -57,63 +61,35 @@ grid_config = {
 }
 
 # Image backbone checkpoint
-
-# EfficientNet
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b2_3rdparty-ra-noisystudent_in1k_20221103-301ed299.pth'
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b6_3rdparty-ra-noisystudent_in1k_20221103-7de7d2cc.pth'
-
-# EfficientNetV2
-checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-s_3rdparty_in21k_20221220-c0572b56.pth' # efficientnetv2-s
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-m_3rdparty_in21k_20221220-073e944c.pth' # efficientnetv2-m
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-l_3rdparty_in21k_20221220-f28f91e1.pth' # efficientnetv2-l
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-xl_3rdparty_in21k_20221220-b2c9329c.pth' # efficientnetv2-xl
-
-# LeViT
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-192_3rdparty_in1k_20230117-8217a0f9.pth' # 192
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-256_3rdparty_in1k_20230117-5ae2ce7d.pth' # 256
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-384_3rdparty_in1k_20230117-f3539cce.pth' # 384
+checkpoint = 'https://download.openmmlab.com/mmclassification/v0/convnext/convnext-base_3rdparty_in21k_20220124-13b83eec.pth'
 
 # Intermediate Checkpointing to save GPU memory.
-with_cp = False
+with_cp = True
 
 voxel_size = [0.1, 0.1, 0.2] # For CenterHead
 
 numC_Trans = 80 # BEV channels
 
-# EfficientNetV2
-find_unused_parameters = True
-
 model = dict(
     type='BEVDepth',
     
-    # EfficientNetV2 backbone
+    # ConvNeXt backbone
     img_backbone=dict(
-        type='EfficientNetV2',
-        arch='s',
-        out_indices=[3, 4, 5, 6],
+        type='ConvNeXt',
+        arch='base', # output channels [128, 256, 512, 1024]
+        out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
         frozen_stages=0,
         with_cp=with_cp,
+        gap_before_final_norm=False, # Whether to globally average the feature
+                                    # map before the final norm layer. In the official repo, it's only
+                                    # used in classification task. Defaults to True.
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[64, 128, 160, 256],
+        in_channels=[128, 256, 512, 1024],
         out_channels=[128, 128, 128, 128],
-        upsample_strides=[0.5, 1, 1, 2]),
-        
-    # EfficientNet backbone
-    # img_backbone=dict(
-    #     type='EfficientNet',
-    #     arch='b2',
-    #     out_indices=[3, 4, 5, 6],
-    #     frozen_stages=0,
-    #     with_cp=with_cp,
-    #     init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
-    # img_neck=dict(
-    #     type='SECONDFPN',
-    #     in_channels=[48, 120, 352, 1408],
-    #     out_channels=[128, 128, 128, 128],
-    #     upsample_strides=[0.25, 0.5, 1, 2]),
-    
+        upsample_strides=[0.25, 0.5, 1, 2]),
+
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
         type='LSSViewTransformerBEVDepth',

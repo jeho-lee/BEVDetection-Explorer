@@ -1,24 +1,6 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 """
-[Configuraion Change History]
-
-2023-4-5 (css5)
-- SECOND FPN (image neck, bev neck)
-- grid config from BEVDepth
-
-2023-4-6 (ai datacenter)
-- lr, weight_decay, optimizer_config (from BEVDepth, SOLOFusion)
-- No autoscale_lr
-
-[In-progress]
-
-2023-4-7 (css5)
-- ConvNeXt-base backbone (from SOLOFusion)
-- Batch size per GPU: 4 (due to memory limit)
-- lr: 0.0001
-
-[Current Change]
 
 2023-4-8 (ai-datacenter)
 - EfficientNetV2-m backbone
@@ -26,12 +8,21 @@
 - lr: 2e-4
 - find_unused_parameters = True
 
+2023-4-15
+- lr = 4e-4
+- weight decay = 1e-2
+
 """
+
+num_gpu = 8
+batch_size_per_device = 2 # effnetv2: max 2
+# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
+lr = 4e-4
+weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
-# If point cloud range is changed, the models should also change their point
-# cloud range accordingly
+# If point cloud range is changed, the models should also change their point cloud range accordingly
 point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
 # For nuScenes we usually do 10-class detection
 class_names = [
@@ -300,9 +291,6 @@ test_data_config = dict(
     data_root=data_root,
     ann_file=ann_root + 'nuscenes_infos_val.pkl')
 
-num_gpu = 8
-batch_size_per_device = 2 # due to the memory limitation
-
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
     samples_per_gpu=batch_size_per_device, # If use 8 GPUs, total batch size is 8*8=64
@@ -325,10 +313,6 @@ data = dict(
 for key in ['val', 'test']:
     data[key].update(share_data_config)
 data['train']['dataset'].update(share_data_config)
-
-# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-lr = 2e-4
-weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
 
 # Optimizer
 optimizer = dict(type='AdamW', lr=lr, weight_decay=weight_decay)
