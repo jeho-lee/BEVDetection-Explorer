@@ -1,32 +1,32 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 """
-2023-4-7
-- ConvNeXt-base backbone (from SOLOFusion)
-- Batch size per GPU: 2 (due to memory limit) => total 16
-- lr: 0.00005
-
-2023-4-11
-- with_cp = True => training 시간보다는 training 시 GPU 메모리를 많이 절약해주는 듯
-- batch_size_per_device = 4
-- lr = 2e-4
 
 2023-4-12
 - image resolution = (640, 1600)
 - lr = (2e-4 / 64) * (num_gpu * batch_size_per_device) => 7.5e-5
 - batch_size_per_device = 3
 
-2023-4-16
+2023-4-16 (Divergence)
 - lr = 4e-4
 - lr decay = 1e-2
+
+2023-4-17
+- with_cp = False
+- 
 """
 
 # Training configurations
 num_gpu = 8
 batch_size_per_device = 3
 # lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-lr = 4e-4
-weight_decay = 1e-2 # 1e-2 in bevdet
+lr = 5e-4
+weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
+lr_decay_steps = [19, 23] # [16, 22] in bevbet
+
+warmup_iters = 2000 # 500 in bevdet
+warmup_ratio = 0.001
+
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
@@ -71,7 +71,7 @@ voxel_size = [0.1, 0.1, 0.2] # For CenterHead
 numC_Trans = 80 # BEV channels
 
 # Intermediate Checkpointing to save GPU memory.
-with_cp = True
+with_cp = False
 
 model = dict(
     type='BEVDepth',
@@ -300,10 +300,9 @@ optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
 lr_config = dict(
     policy='step',
     warmup='linear',
-    warmup_iters=500,
-    warmup_ratio=0.001,
-    step=[16, 22])
-    # step=[20,]) # bevdet
+    warmup_iters=warmup_iters,
+    warmup_ratio=warmup_ratio,
+    step=lr_decay_steps)
 runner = dict(type='EpochBasedRunner', max_epochs=24) # 24 epochs
 
 custom_hooks = [

@@ -99,22 +99,22 @@ model = dict(
     img_backbone=dict(
         type='EfficientNetV2',
         arch='s',
-        out_indices=[3, 4, 5, 6],
+        out_indices=[4, 5, 6],
         frozen_stages=0,
         with_cp=with_cp,
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[64, 128, 160, 256],
-        out_channels=[128, 128, 128, 128],
-        upsample_strides=[0.5, 1, 1, 2]),
-    
+        in_channels=[128, 160, 256],
+        out_channels=[128, 128, 128],
+        upsample_strides=[1, 1, 2]),
+   
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
         type='LSSViewTransformerBEVDepth',
         grid_config=grid_config,
         input_size=data_config['input_size'],
-        in_channels=512,
+        in_channels=384,
         out_channels=numC_Trans,
         
         # Whether to use deformable convolution (TODO check)
