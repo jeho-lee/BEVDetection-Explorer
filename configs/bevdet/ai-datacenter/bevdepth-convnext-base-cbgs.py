@@ -1,7 +1,6 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 """
-
 2023-4-7 (css5)
 - ConvNeXt-base backbone (from SOLOFusion)
 - Batch size per GPU: 2 (due to memory limit) => total 16
@@ -16,13 +15,33 @@
 2023-4-15
 - lr = 4e-4
 - weight decay = 1e-2
+
+2023-4-20
+- lr = 5e-4
+- weight decay = 1e-2
+- lr_decay_steps = [19, 23]
+- warmup iters = 2000
+
+2023-4-21
+- lr = 2e-4
+- weight decay = 1e-2
+- lr_decay_steps = [16, 22]
+- warmup iters = 500
+- batch size = 8
 """
 
+# GPU and batch size
 num_gpu = 8
-batch_size_per_device = 4 # due to the memory limitation
-# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-lr = 4e-4
+batch_size_per_device = 8
+
+# learning rate and scheduling
+lr = 2e-4
+lr_decay_steps = [16, 22]
+
+# AdamW
 weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
+warmup_iters = 500 # 500 in bevdet
+warmup_ratio = 0.001
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
@@ -297,10 +316,9 @@ optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
 lr_config = dict(
     policy='step',
     warmup='linear',
-    warmup_iters=500,
-    warmup_ratio=0.001,
-    step=[16, 22])
-    # step=[20,]) # bevdet
+    warmup_iters=warmup_iters,
+    warmup_ratio=warmup_ratio,
+    step=lr_decay_steps)
 runner = dict(type='EpochBasedRunner', max_epochs=24) # 24 epochs
 
 custom_hooks = [

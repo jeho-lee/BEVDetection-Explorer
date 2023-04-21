@@ -12,13 +12,25 @@
 - lr = 4e-4
 - weight decay = 1e-2
 
+2023-4-20
+- lr = 5e-4
+- weight decay = 1e-2
+- lr_decay_steps = [19, 23]
+- warmup iters = 2000
 """
 
+# GPU and batch size
 num_gpu = 8
 batch_size_per_device = 2 # effnetv2: max 2
-# lr = (2e-4 / 64) * (num_gpu * batch_size_per_device)
-lr = 4e-4
+
+# learning rate and scheduling
+lr = 5e-4
+lr_decay_steps = [19, 23]
+
+# AdamW
 weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
+warmup_iters = 2000 # 500 in bevdet
+warmup_ratio = 0.001
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
@@ -99,21 +111,7 @@ model = dict(
         in_channels=[160, 176, 304, 512],
         out_channels=[128, 128, 128, 128],
         upsample_strides=[1, 1, 2, 2]),
-        
-    # EfficientNet backbone
-    # img_backbone=dict(
-    #     type='EfficientNet',
-    #     arch='b2',
-    #     out_indices=[3, 4, 5, 6],
-    #     frozen_stages=0,
-    #     with_cp=with_cp,
-    #     init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
-    # img_neck=dict(
-    #     type='SECONDFPN',
-    #     in_channels=[48, 120, 352, 1408],
-    #     out_channels=[128, 128, 128, 128],
-    #     upsample_strides=[0.25, 0.5, 1, 2]),
-    
+
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
         type='LSSViewTransformerBEVDepth',
@@ -321,10 +319,9 @@ optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
 lr_config = dict(
     policy='step',
     warmup='linear',
-    warmup_iters=500,
-    warmup_ratio=0.001,
-    step=[16, 22])
-    # step=[20,]) # bevdet
+    warmup_iters=warmup_iters,
+    warmup_ratio=warmup_ratio,
+    step=lr_decay_steps)
 runner = dict(type='EpochBasedRunner', max_epochs=24) # 24 epochs
 
 custom_hooks = [

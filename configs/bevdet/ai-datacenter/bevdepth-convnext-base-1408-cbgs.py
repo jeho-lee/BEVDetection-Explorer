@@ -1,44 +1,47 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 """
+
 2023-4-12
-- EfficientNetV2-s backbone
-- find_unused_parameters = True
-- batch_size_per_device: 4
-- lr: 1e-4
+- image resolution = (640, 1600)
+- lr = (2e-4 / 64) * (num_gpu * batch_size_per_device) => 7.5e-5
+- batch_size_per_device = 3
 
-2023-4-15
+2023-4-16 (Divergence)
 - lr = 4e-4
-- weight decay = 1e-2
+- lr decay = 1e-2
 
-2023-4-17
-- lr = 5e-4
-- weight decay = 1e-1
-- lr_decay_steps = [16, 18, 20, 22]
-- warmup_iters = 2000
-
-2023-4-19
+2023-4-20
 - lr = 5e-4
 - weight decay = 1e-2
 - lr_decay_steps = [19, 23]
-- warmup_iters = 2000
+- warmup iters = 2000
+- input size = (512, 1408)
+- resize dim = (0.386 * 2, 0.55 * 2)
 
-2023-4-21 (final trial)
-- lr = 2e-4
-- weight decay = 1e-2
+2023-4-21
+- lr = 1e-4
 - lr_decay_steps = [16, 22]
-- warmup_iters = 2000
+- batch_size_per_device = 4
 """
 
+# GPU and batch size
 num_gpu = 8
 batch_size_per_device = 4
+num_workers_per_gpu = 4
 
-lr = 2e-4
-weight_decay = 1e-2
-
+# learning rate and scheduling
+lr = 1e-4
 lr_decay_steps = [16, 22]
+
+# AdamW
+weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
 warmup_iters = 2000 # 500 in bevdet
 warmup_ratio = 0.001
+
+# Image input
+input_size = (512, 1408)
+resize_lim = (0.386 * 2, 0.55 * 2) # BEVDepth
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
 # Global
@@ -56,11 +59,11 @@ data_config = {
         'CAM_BACK', 'CAM_BACK_RIGHT'
     ],
     'Ncams': 6,
-    'input_size': (256, 704),
+    'input_size': input_size,
     'src_size': (900, 1600),
 
     # Augmentation
-    'resize': (-0.06, 0.11),
+    'resize': resize_lim, # bevdet: (-0.06, 0.11)
     'rot': (-5.4, 5.4),
     'flip': True,
     'crop_h': (0.0, 0.0),
@@ -77,48 +80,33 @@ grid_config = {
 }
 
 # Image backbone checkpoint
-
-# EfficientNet
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b2_3rdparty-ra-noisystudent_in1k_20221103-301ed299.pth'
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b6_3rdparty-ra-noisystudent_in1k_20221103-7de7d2cc.pth'
-
-# EfficientNetV2
-checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-s_3rdparty_in21k_20221220-c0572b56.pth' # efficientnetv2-s
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-m_3rdparty_in21k_20221220-073e944c.pth' # efficientnetv2-m
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-l_3rdparty_in21k_20221220-f28f91e1.pth' # efficientnetv2-l
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-xl_3rdparty_in21k_20221220-b2c9329c.pth' # efficientnetv2-xl
-
-# LeViT
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-192_3rdparty_in1k_20230117-8217a0f9.pth' # 192
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-256_3rdparty_in1k_20230117-5ae2ce7d.pth' # 256
-# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-384_3rdparty_in1k_20230117-f3539cce.pth' # 384
-
-# Intermediate Checkpointing to save GPU memory.
-with_cp = False
+checkpoint = 'https://download.openmmlab.com/mmclassification/v0/convnext/convnext-base_3rdparty_in21k_20220124-13b83eec.pth'
 
 voxel_size = [0.1, 0.1, 0.2] # For CenterHead
-
 numC_Trans = 80 # BEV channels
 
-# EfficientNetV2
-find_unused_parameters = True
+# Intermediate Checkpointing to save GPU memory.
+with_cp = True
 
 model = dict(
     type='BEVDepth',
     
-    # EfficientNetV2 backbone
+    # ConvNeXt backbone
     img_backbone=dict(
-        type='EfficientNetV2',
-        arch='s',
-        out_indices=[3, 4, 5, 6],
+        type='ConvNeXt',
+        arch='base', # output channels [128, 256, 512, 1024]
+        out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
         frozen_stages=0,
         with_cp=with_cp,
+        gap_before_final_norm=False, # Whether to globally average the feature
+                                    # map before the final norm layer. In the official repo, it's only
+                                    # used in classification task. Defaults to True.
         init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[64, 128, 160, 256],
+        in_channels=[128, 256, 512, 1024],
         out_channels=[128, 128, 128, 128],
-        upsample_strides=[0.5, 1, 1, 2]),
+        upsample_strides=[0.25, 0.5, 1, 2]),
     
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
@@ -213,7 +201,7 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/datasets/nuscenes/' # AI datacenter
+data_root = '/datasets/nuscenes/'
 ann_root = '/home/dlwpgh1994/3D-perception/data/'
 file_client_args = dict(backend='disk')
 
@@ -300,7 +288,7 @@ test_data_config = dict(
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
     samples_per_gpu=batch_size_per_device, # If use 8 GPUs, total batch size is 8*8=64
-    workers_per_gpu=4,
+    workers_per_gpu=num_workers_per_gpu,
     train=dict(
         type='CBGSDataset',
         dataset=dict(
