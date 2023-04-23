@@ -23,8 +23,14 @@
 - lr_decay_steps = [19, 23]
 - warmup_iters = 2000
 
-2023-4-21 (final trial)
+2023-4-21 
 - lr = 2e-4
+- weight decay = 1e-2
+- lr_decay_steps = [16, 22]
+- warmup_iters = 2000
+
+2023-4-23 (final trial)
+- lr = 1e-3
 - weight decay = 1e-2
 - lr_decay_steps = [16, 22]
 - warmup_iters = 2000
@@ -33,7 +39,7 @@
 num_gpu = 8
 batch_size_per_device = 4
 
-lr = 2e-4
+lr = 1e-3
 weight_decay = 1e-2
 
 lr_decay_steps = [16, 22]
