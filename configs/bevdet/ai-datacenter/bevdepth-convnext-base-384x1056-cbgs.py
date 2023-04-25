@@ -1,38 +1,54 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 """
-Configuraion Change History
 
-2023-4-5 (css5)
-- SECOND FPN (image neck, bev neck)
-- grid config from BEVDepth
+2023-4-12
+- image resolution = (640, 1600)
+- lr = (2e-4 / 64) * (num_gpu * batch_size_per_device) => 7.5e-5
+- batch_size_per_device = 3
 
-2023-4-6 (ai datacenter)
-- lr, weight_decay, optimizer_config (from BEVDepth, SOLOFusion)
-- No autoscale_lr
+2023-4-16 (Divergence)
+- lr = 4e-4
+- lr decay = 1e-2
+
+2023-4-20 (Divergence)
+- lr = 5e-4
+- weight decay = 1e-2
+- lr_decay_steps = [19, 23]
+- warmup iters = 2000
+- input size = (512, 1408)
+- resize dim = (0.386 * 2, 0.55 * 2)
+
+2023-4-25
+- lr = 4e-4
+- lr_decay_steps = [16, 22]
+- batch_size_per_device = 4
+- resize dim = (-0.06, 0.11) (bevdet)
+- input size = (384, 1056)
 
 """
 
+# GPU and batch size
 num_gpu = 8
-batch_size_per_device = 8
-lr = 2e-4
-weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
-lr_decay_steps = [16, 22] # bevdepth with epoch 24: [19, 23] # [16, 22] in bevbet
-warmup_iters = 500 # 500 in bevdet
+batch_size_per_device = 4
+num_workers_per_gpu = 4
+
+# learning rate and scheduling
+lr = 4e-4
+lr_decay_steps = [16, 22]
+
+# AdamW
+weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
+warmup_iters = 2000 # 500 in bevdet
 warmup_ratio = 0.001
-max_epochs = 24
 
-# 
-point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0] # If point cloud range is changed, the models should also change their point cloud range accordingly
-
-# BEVDepth vs BEVDet
-grid_size = [1024, 1024, 40] # bevdet: [1024, 1024, 40], bevdepth: [512, 512, 1]
-voxel_size = [0.1, 0.1, 0.2] # bevdet: [0.1, 0.1, 0.2], bevdepth: [0.2, 0.2, 8]
-
-numC_Trans = 80 # BEV channels
+# Image input
+input_size = (384, 1056)
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
-
+# Global
+# If point cloud range is changed, the models should also change their point cloud range accordingly
+point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
 # For nuScenes we usually do 10-class detection
 class_names = [
     'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
@@ -45,7 +61,7 @@ data_config = {
         'CAM_BACK', 'CAM_BACK_RIGHT'
     ],
     'Ncams': 6,
-    'input_size': (256, 704),
+    'input_size': input_size,
     'src_size': (900, 1600),
 
     # Augmentation
@@ -65,24 +81,32 @@ grid_config = {
     'depth': [2.0, 58.0, 0.5], # BEVDepth
 }
 
+# Image backbone checkpoint
+checkpoint = 'https://download.openmmlab.com/mmclassification/v0/convnext/convnext-base_3rdparty_in21k_20220124-13b83eec.pth'
+
+voxel_size = [0.1, 0.1, 0.2] # For CenterHead
+numC_Trans = 80 # BEV channels
+
+# Intermediate Checkpointing to save GPU memory.
+with_cp = True
+
 model = dict(
     type='BEVDepth',
     
-    # Standard Resnet50 + FPN for image feature extraction
+    # ConvNeXt backbone
     img_backbone=dict(
-        pretrained='torchvision://resnet50',
-        type='ResNet',
-        depth=50,
-        num_stages=4,
-        out_indices=(0, 1, 2, 3), # SECONDFPN in BEVDepth
+        type='ConvNeXt',
+        arch='base', # output channels [128, 256, 512, 1024]
+        out_indices=[0, 1, 2, 3], # for SECONDFPN in BEVDepth
         frozen_stages=0,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        norm_eval=False,
-        with_cp=True,
-        style='pytorch'),
+        with_cp=with_cp,
+        gap_before_final_norm=False, # Whether to globally average the feature
+                                    # map before the final norm layer. In the official repo, it's only
+                                    # used in classification task. Defaults to True.
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[256, 512, 1024, 2048],
+        in_channels=[128, 256, 512, 1024],
         out_channels=[128, 128, 128, 128],
         upsample_strides=[0.25, 0.5, 1, 2]),
     
@@ -147,7 +171,7 @@ model = dict(
     train_cfg=dict(
         pts=dict(
             point_cloud_range=point_cloud_range,
-            grid_size=grid_size,
+            grid_size=[1024, 1024, 40],
             voxel_size=voxel_size,
             out_size_factor=8,
             dense_reg=1,
@@ -179,7 +203,8 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/data/home/jeholee/omni3D/data/nuscenes/' # TODO
+data_root = '/datasets/nuscenes/'
+ann_root = '/home/dlwpgh1994/3D-perception/data/'
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
@@ -260,17 +285,17 @@ share_data_config = dict(
 test_data_config = dict(
     pipeline=test_pipeline,
     data_root=data_root,
-    ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
+    ann_file=ann_root + 'nuscenes_infos_val.pkl')
 
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
     samples_per_gpu=batch_size_per_device, # If use 8 GPUs, total batch size is 8*8=64
-    workers_per_gpu=4,
+    workers_per_gpu=num_workers_per_gpu,
     train=dict(
         type='CBGSDataset',
         dataset=dict(
         data_root=data_root,
-        ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
+        ann_file=ann_root + 'nuscenes_infos_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -285,8 +310,6 @@ for key in ['val', 'test']:
     data[key].update(share_data_config)
 data['train']['dataset'].update(share_data_config)
 
-
-
 # Optimizer
 optimizer = dict(type='AdamW', lr=lr, weight_decay=weight_decay)
 optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
@@ -297,7 +320,7 @@ lr_config = dict(
     warmup_iters=warmup_iters,
     warmup_ratio=warmup_ratio,
     step=lr_decay_steps)
-runner = dict(type='EpochBasedRunner', max_epochs=max_epochs) # 24 epochs
+runner = dict(type='EpochBasedRunner', max_epochs=24) # 24 epochs
 
 custom_hooks = [
     dict(

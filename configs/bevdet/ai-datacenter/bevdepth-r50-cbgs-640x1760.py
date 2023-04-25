@@ -11,11 +11,19 @@ Configuraion Change History
 - lr, weight_decay, optimizer_config (from BEVDepth, SOLOFusion)
 - No autoscale_lr
 
+2023-4-23 input size 640x1760
+- input_size = (640, 1760)
+- batch_size_per_device = 3
+
+2023-4-25
+- input_size = (640, 1760)
+- batch_size_per_device = 3
+- lr = 5e-4
 """
 
 num_gpu = 8
-batch_size_per_device = 8
-lr = 2e-4
+batch_size_per_device = 3
+lr = 5e-4
 weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
 lr_decay_steps = [16, 22] # bevdepth with epoch 24: [19, 23] # [16, 22] in bevbet
 warmup_iters = 500 # 500 in bevdet
@@ -28,6 +36,9 @@ point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0] # If point cloud range
 # BEVDepth vs BEVDet
 grid_size = [1024, 1024, 40] # bevdet: [1024, 1024, 40], bevdepth: [512, 512, 1]
 voxel_size = [0.1, 0.1, 0.2] # bevdet: [0.1, 0.1, 0.2], bevdepth: [0.2, 0.2, 8]
+
+# input size
+input_size = (640, 1760)
 
 numC_Trans = 80 # BEV channels
 
@@ -45,7 +56,7 @@ data_config = {
         'CAM_BACK', 'CAM_BACK_RIGHT'
     ],
     'Ncams': 6,
-    'input_size': (256, 704),
+    'input_size': input_size,
     'src_size': (900, 1600),
 
     # Augmentation
@@ -179,7 +190,8 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/data/home/jeholee/omni3D/data/nuscenes/' # TODO
+data_root = '/datasets/nuscenes/' # AI datacenter
+ann_root = '/home/dlwpgh1994/3D-perception/data/'
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
@@ -260,7 +272,7 @@ share_data_config = dict(
 test_data_config = dict(
     pipeline=test_pipeline,
     data_root=data_root,
-    ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
+    ann_file=ann_root + 'nuscenes_infos_val.pkl')
 
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
@@ -270,7 +282,7 @@ data = dict(
         type='CBGSDataset',
         dataset=dict(
         data_root=data_root,
-        ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
+        ann_file=ann_root + 'nuscenes_infos_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,

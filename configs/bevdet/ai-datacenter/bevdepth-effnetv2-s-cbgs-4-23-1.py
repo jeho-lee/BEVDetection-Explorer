@@ -1,38 +1,61 @@
 # Copyright (c) Phigent Robotics. All rights reserved.
 
 """
-Configuraion Change History
+2023-4-12
+- EfficientNetV2-s backbone
+- find_unused_parameters = True
+- batch_size_per_device: 4
+- lr: 1e-4
 
-2023-4-5 (css5)
-- SECOND FPN (image neck, bev neck)
-- grid config from BEVDepth
+2023-4-15
+- lr = 4e-4
+- weight decay = 1e-2
 
-2023-4-6 (ai datacenter)
-- lr, weight_decay, optimizer_config (from BEVDepth, SOLOFusion)
-- No autoscale_lr
+2023-4-17
+- lr = 5e-4
+- weight decay = 1e-1
+- lr_decay_steps = [16, 18, 20, 22]
+- warmup_iters = 2000
 
+2023-4-19
+- lr = 5e-4
+- weight decay = 1e-2
+- lr_decay_steps = [19, 23]
+- warmup_iters = 2000
+
+2023-4-21 
+- lr = 2e-4
+- weight decay = 1e-2
+- lr_decay_steps = [16, 22]
+- warmup_iters = 2000
+
+2023-4-23
+- lr = 1e-3
+- weight decay = 1e-2
+- lr_decay_steps = [16, 22]
+- warmup_iters = 2000
+
+2023-4-23 - (1)
+- lr = 7e-4
+- weight decay = 1e-2
+- lr_decay_steps = [16, 22]
+- warmup_iters = 2000
 """
 
 num_gpu = 8
-batch_size_per_device = 8
-lr = 2e-4
-weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
-lr_decay_steps = [16, 22] # bevdepth with epoch 24: [19, 23] # [16, 22] in bevbet
-warmup_iters = 500 # 500 in bevdet
+batch_size_per_device = 4
+
+lr = 7e-4
+weight_decay = 1e-2
+
+lr_decay_steps = [16, 22]
+warmup_iters = 2000 # 500 in bevdet
 warmup_ratio = 0.001
-max_epochs = 24
-
-# 
-point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0] # If point cloud range is changed, the models should also change their point cloud range accordingly
-
-# BEVDepth vs BEVDet
-grid_size = [1024, 1024, 40] # bevdet: [1024, 1024, 40], bevdepth: [512, 512, 1]
-voxel_size = [0.1, 0.1, 0.2] # bevdet: [0.1, 0.1, 0.2], bevdepth: [0.2, 0.2, 8]
-
-numC_Trans = 80 # BEV channels
 
 _base_ = ['../../_base_/datasets/nus-3d.py', '../../_base_/default_runtime.py']
-
+# Global
+# If point cloud range is changed, the models should also change their point cloud range accordingly
+point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
 # For nuScenes we usually do 10-class detection
 class_names = [
     'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
@@ -65,26 +88,49 @@ grid_config = {
     'depth': [2.0, 58.0, 0.5], # BEVDepth
 }
 
+# Image backbone checkpoint
+
+# EfficientNet
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b2_3rdparty-ra-noisystudent_in1k_20221103-301ed299.pth'
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnet/efficientnet-b6_3rdparty-ra-noisystudent_in1k_20221103-7de7d2cc.pth'
+
+# EfficientNetV2
+checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-s_3rdparty_in21k_20221220-c0572b56.pth' # efficientnetv2-s
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-m_3rdparty_in21k_20221220-073e944c.pth' # efficientnetv2-m
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-l_3rdparty_in21k_20221220-f28f91e1.pth' # efficientnetv2-l
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/efficientnetv2/efficientnetv2-xl_3rdparty_in21k_20221220-b2c9329c.pth' # efficientnetv2-xl
+
+# LeViT
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-192_3rdparty_in1k_20230117-8217a0f9.pth' # 192
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-256_3rdparty_in1k_20230117-5ae2ce7d.pth' # 256
+# checkpoint = 'https://download.openmmlab.com/mmclassification/v0/levit/levit-384_3rdparty_in1k_20230117-f3539cce.pth' # 384
+
+# Intermediate Checkpointing to save GPU memory.
+with_cp = False
+
+voxel_size = [0.1, 0.1, 0.2] # For CenterHead
+
+numC_Trans = 80 # BEV channels
+
+# EfficientNetV2
+find_unused_parameters = True
+
 model = dict(
     type='BEVDepth',
     
-    # Standard Resnet50 + FPN for image feature extraction
+    # EfficientNetV2 backbone
     img_backbone=dict(
-        pretrained='torchvision://resnet50',
-        type='ResNet',
-        depth=50,
-        num_stages=4,
-        out_indices=(0, 1, 2, 3), # SECONDFPN in BEVDepth
+        type='EfficientNetV2',
+        arch='s',
+        out_indices=[3, 4, 5, 6],
         frozen_stages=0,
-        norm_cfg=dict(type='BN', requires_grad=True),
-        norm_eval=False,
-        with_cp=True,
-        style='pytorch'),
+        with_cp=with_cp,
+        init_cfg=dict(type='Pretrained', checkpoint=checkpoint)),
     img_neck=dict(
         type='SECONDFPN',
-        in_channels=[256, 512, 1024, 2048],
+        in_channels=[64, 128, 160, 256],
         out_channels=[128, 128, 128, 128],
-        upsample_strides=[0.25, 0.5, 1, 2]),
+        upsample_strides=[0.5, 1, 1, 2]),
     
     # BEV feature extraction
     img_view_transformer=dict( # to LSSViewTransformerBEVDepth
@@ -147,7 +193,7 @@ model = dict(
     train_cfg=dict(
         pts=dict(
             point_cloud_range=point_cloud_range,
-            grid_size=grid_size,
+            grid_size=[1024, 1024, 40],
             voxel_size=voxel_size,
             out_size_factor=8,
             dense_reg=1,
@@ -179,7 +225,8 @@ model = dict(
 
 # Data
 dataset_type = 'NuScenesDataset'
-data_root = '/data/home/jeholee/omni3D/data/nuscenes/' # TODO
+data_root = '/datasets/nuscenes/' # AI datacenter
+ann_root = '/home/dlwpgh1994/3D-perception/data/'
 file_client_args = dict(backend='disk')
 
 bda_aug_conf = dict(
@@ -260,7 +307,7 @@ share_data_config = dict(
 test_data_config = dict(
     pipeline=test_pipeline,
     data_root=data_root,
-    ann_file=data_root + 'bevdetv2-nuscenes_infos_val.pkl')
+    ann_file=ann_root + 'nuscenes_infos_val.pkl')
 
 # Training Config (2023-4-6 by Jeho Lee)
 data = dict(
@@ -270,7 +317,7 @@ data = dict(
         type='CBGSDataset',
         dataset=dict(
         data_root=data_root,
-        ann_file=data_root + 'bevdetv2-nuscenes_infos_train.pkl',
+        ann_file=ann_root + 'nuscenes_infos_train.pkl',
         pipeline=train_pipeline,
         classes=class_names,
         test_mode=False,
@@ -285,8 +332,6 @@ for key in ['val', 'test']:
     data[key].update(share_data_config)
 data['train']['dataset'].update(share_data_config)
 
-
-
 # Optimizer
 optimizer = dict(type='AdamW', lr=lr, weight_decay=weight_decay)
 optimizer_config = dict(grad_clip=dict(max_norm=5, norm_type=2))
@@ -297,7 +342,7 @@ lr_config = dict(
     warmup_iters=warmup_iters,
     warmup_ratio=warmup_ratio,
     step=lr_decay_steps)
-runner = dict(type='EpochBasedRunner', max_epochs=max_epochs) # 24 epochs
+runner = dict(type='EpochBasedRunner', max_epochs=24) # 24 epochs
 
 custom_hooks = [
     dict(
