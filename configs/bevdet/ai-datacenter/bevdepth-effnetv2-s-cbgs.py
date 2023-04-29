@@ -29,10 +29,16 @@
 - lr_decay_steps = [16, 22]
 - warmup_iters = 2000
 
-2023-4-23 (final trial)
+2023-4-23
 - lr = 1e-3
 - weight decay = 1e-2
 - lr_decay_steps = [16, 22]
+- warmup_iters = 2000
+
+2023-4-26 (final trial)
+- lr = 1e-3
+- weight decay = 1e-1
+- lr_decay_steps = [16, 19, 22]
 - warmup_iters = 2000
 """
 
@@ -40,9 +46,9 @@ num_gpu = 8
 batch_size_per_device = 4
 
 lr = 1e-3
-weight_decay = 1e-2
+weight_decay = 1e-1
+lr_decay_steps = [16, 19, 22]
 
-lr_decay_steps = [16, 22]
 warmup_iters = 2000 # 500 in bevdet
 warmup_ratio = 0.001
 

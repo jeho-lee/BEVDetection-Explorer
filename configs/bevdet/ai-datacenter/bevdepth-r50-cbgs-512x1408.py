@@ -15,16 +15,22 @@ Configuraion Change History
 - input_size = (512, 1408)
 - batch_size_per_device = 4
 
-2023-4-25
+2023-4-25 (발산)
 - input_size = (512, 1408)
 - batch_size_per_device = 4
 - lr = 4e-4
+
+2023-4-26
+- input_size = (512, 1408)
+- batch_size_per_device = 4
+- lr = 4e-4
+- weight_decay = 1e-1
 """
 
 num_gpu = 8
 batch_size_per_device = 4
 lr = 4e-4
-weight_decay = 1e-7 # 1e-2 in bevdet and BEVFormerV2
+weight_decay = 1e-1 # 1e-2 in bevdet and BEVFormerV2
 lr_decay_steps = [16, 22] # bevdepth with epoch 24: [19, 23] # [16, 22] in bevbet
 warmup_iters = 500 # 500 in bevdet
 warmup_ratio = 0.001

@@ -19,12 +19,15 @@
 - input size = (512, 1408)
 - resize dim = (0.386 * 2, 0.55 * 2)
 
-2023-4-25
+2023-4-25 (발산)
 - lr = 4e-4
 - lr_decay_steps = [16, 22]
 - batch_size_per_device = 4
 - resize dim = (-0.06, 0.11) (bevdet)
 - input size = (384, 1056)
+
+2023-4-27
+- weight_decay = 1e-1
 
 """
 
@@ -38,7 +41,7 @@ lr = 4e-4
 lr_decay_steps = [16, 22]
 
 # AdamW
-weight_decay = 1e-2 # 1e-2 in bevdet and BEVFormerV2
+weight_decay = 1e-1
 warmup_iters = 2000 # 500 in bevdet
 warmup_ratio = 0.001
 
